@@ -20,6 +20,28 @@
     out.walkZ = Number(cam.position.z.toFixed(2));
     out.collision = out.walkZ > -0.72;
 
+    // no invisible walls: walk through the open aisle end door
+    cam.position.set(0, 1.62, 0);
+    __app.walk.yaw = -Math.PI / 2;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await sleep(1600);
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft' }));
+    out.airX = Number(cam.position.x.toFixed(2));
+    out.pastContainment = cam.position.x > 2.2;
+
+    // and reach close to the real back/front wall
+    cam.position.set(-3, 1.62, 0);
+    __app.walk.yaw = Math.PI;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await sleep(1600);
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft' }));
+    out.airZ = Number(cam.position.z.toFixed(2));
+    out.reachWall = cam.position.z > 4.5;
+
     // crosshair pick: aim at a rack front
     cam.position.set(-0.31, 1.62, 0.35);
     __app.walk.yaw = 0;

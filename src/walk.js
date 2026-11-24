@@ -175,7 +175,9 @@ export class WalkMode {
   }
 
   walkable(x, z) {
-    if (x < -6.9 || x > 6.9 || z < -4.15 || z > 4.15) return false;
+    // Room is 13.2 × 11.2 m: keep the player inside the real walls
+    // (half w 6.6 / half d 5.6) minus body radius, not the old tight box.
+    if (x < -6.3 || x > 6.3 || z < -5.2 || z > 5.2) return false;
     const r = this.radius;
     for (const b of this.boxes) {
       if (x > b.x1 - r && x < b.x2 + r && z > b.z1 - r && z < b.z2 + r) return false;

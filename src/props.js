@@ -24,9 +24,11 @@ export class Props {
     this.obstacles = [
       { x1: -6.55, x2: -5.75, z1: -3.7, z2: 4.1 },   // UPS / battery / distribution
       { x1: -6.25, x2: -5.55, z1: -4.9, z2: -3.5 },  // gas cylinders
-      { x1: -6.1, x2: -5.0, z1: 3.55, z2: 4.55 },    // spare-parts shelf
+      { x1: -6.15, x2: -4.35, z1: 3.55, z2: 4.55 },  // spare-parts shelf
       { x1: -4.7, x2: -3.8, z1: 2.85, z2: 3.85 },    // tool cart
-      { x1: 1.85, x2: 2.35, z1: -1.25, z2: 1.25 },   // cold-aisle end door (right end)
+      // Cold-aisle end door: only the two posts collide, the open doorway is walkable.
+      { x1: 1.95, x2: 2.15, z1: -1.1, z2: -0.86 },
+      { x1: 1.95, x2: 2.15, z1: 0.86, z2: 1.1 },
     ];
 
     const mat = materials();
