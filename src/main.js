@@ -657,12 +657,17 @@ function setDataMode(mode) {
 }
 
 /* ---------------------------- view switching --------------------------- */
+let walkRef = null;
+
 function setViewMode(v) {
+  // Leaving 3D must leave first-person mode too, otherwise the eye-level
+  // camera + enabled OrbitControls come back as a hybrid on return.
+  if (walkRef?.active) walkRef.exit();
   app.view = v;
   const is2d = v === '2d';
   document.body.classList.toggle('view-2d', is2d);
   renderer.domElement.style.display = is2d ? 'none' : 'block';
-  controls.enabled = !is2d;
+  controls.enabled = !is2d && !walkRef?.active;
   document.querySelectorAll('#view-toggle [data-view]').forEach((b) => {
     b.classList.toggle('on', b.dataset.view === v);
   });
@@ -1458,6 +1463,7 @@ const templates = new Templates(app);
 const frontEditor = new FrontEditor(app);
 const cabling = new Cabling(app);
 const walk = new WalkMode(app);
+walkRef = walk;
 app.history = history;
 app.settings = settings;
 app.analytics = analytics;

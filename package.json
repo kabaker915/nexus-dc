@@ -1,6 +1,6 @@
 {
   "name": "nexus-dc",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": false,
   "type": "module",
   "description": "NEXUS DC — interactive three.js 3D datacenter digital twin with a Canvas 2D operations cockpit, port-level cabling, NetDevOps toolbox and real-device telemetry (SSH / SNMP / Redfish).",

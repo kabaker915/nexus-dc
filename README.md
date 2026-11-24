@@ -353,6 +353,7 @@ node tools/cdp.mjs http://127.0.0.1:5199/ tools/p0p1.png 5000 @p0p1-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/batch.png 5000 @batch-render-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/p2.png 5000 @p2-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/walk.png 5000 @walk-scenario.js
+node tools/cdp.mjs http://127.0.0.1:5199/ tools/viewmode.png 5000 @viewmode-scenario.js
 node tools/service-test.mjs       # SNMP / Redfish 网关 + LLDP 解析（含本地 mock 设备）
 node tools/parse-test.mjs        # 真实设备回显解析（H3C / 华为 / Cisco / Linux）
 ```
