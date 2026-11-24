@@ -62,6 +62,7 @@ export class WalkMode {
       z1: r.z - RACK_D / 2 - 0.06,
       z2: r.z + RACK_D / 2 + 0.06,
     }));
+    if (app.props?.obstacles) this.boxes.push(...app.props.obstacles);
 
     this.active = true;
     this.hud?.classList.add('on');

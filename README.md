@@ -74,6 +74,18 @@ node server.mjs            # 或: PORT=8080 node server.mjs
 
 ---
 
+## 机房基础设施（v1.4）
+
+建模包里的整机房内容已全部搬入：**吊顶与灯盘、UPS/电池/配电区、七氟丙烷气瓶与顶部喷淋、NOC 监控大屏（实时仪表盘）、门禁入口、备件货架/工具车、冷通道端门、尘埃与冷气粒子**。全部按我们的 13.2 × 11.2 m 机房重新落位，UPS/消防/货架/端门同时加入第一人称碰撞。
+
+![机房基础设施](docs/props.png)
+
+![NOC 监控大屏](docs/noc.png)
+
+![配电与消防](docs/power.png)
+
+---
+
 ## 编辑效率与性能（P0）
 
 | 能力 | 说明 |
@@ -302,6 +314,8 @@ nexus-dc/
 │   ├── thermal.js        # 机柜热力与体积光
 │   ├── walk.js           # 第一人称巡检（机柜碰撞 / 头灯 / 准星拾取）
 │   ├── paneltex.js       # 程序化设备面板贴图库（融合自 DCIM 建模包）
+│   ├── props.js          # 机房基础设施（UPS / 消防 / NOC / 吊顶 / 粒子）
+│   ├── roompack.js       # 建模包机房构建器（按本机房尺寸适配）
 │   ├── types.d.ts        # 核心对象类型契约（jsconfig.json 提供编辑器检查）
 │   ├── toolbox.js        # NetDevOps 工具箱窗口（终端/配置/巡检/模板/诊断）
 │   ├── netdevops/

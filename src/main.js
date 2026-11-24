@@ -36,6 +36,7 @@ import { WorkOrders } from './workorders.js';
 import { Thermal } from './thermal.js';
 import { Playbook } from './playbook.js';
 import { WalkMode } from './walk.js';
+import { Props } from './props.js';
 
 /* Local gateway token: injected into index.html by server.mjs.
  * Added to every same-origin /api request so a DNS-rebound page cannot use it. */
@@ -1468,7 +1469,10 @@ app.frontEditor = frontEditor;
 app.cabling = cabling;
 app.walk = walk;
 app.kick = markActive;
+app.touchShadows = touchShadows;
 app.pickAtCenter = () => pickAt({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+const props = new Props(app);
+app.props = props;
 if (settings.data.heat) thermal.setHeat(true);
 if (settings.data.shafts) thermal.setShafts(true);
 analytics.ready.then(() => ui.refresh());
@@ -1660,6 +1664,7 @@ function animate(now) {
   world.overhead.visible = camera.position.y < 5.4;
   if (walk.active) walk.update(dt);
   else controls.update();
+  props.update(dt, now / 1000);
 
   // Render on demand: full rate while interacting, ~12 fps when idle.
   const idle = now > activeUntil;
