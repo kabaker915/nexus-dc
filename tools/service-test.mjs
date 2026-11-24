@@ -8,6 +8,7 @@ import http from 'node:http';
 import { parseLldp } from '../src/realnet.js';
 
 const API = 'http://127.0.0.1:5199';
+let TOKEN = '';
 
 /* ---------------- minimal BER (test-side encoder) ---------------- */
 const lenBytes = (n) => (n < 0x80 ? [n] : (() => {
@@ -108,10 +109,20 @@ const check = (name, ok, detail = '') => {
 
 const post = async (path, body) => {
   const r = await fetch(`${API}${path}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Nexus-Token': TOKEN },
+    body: JSON.stringify(body),
   });
   return r.json();
 };
+
+// The page embeds a per-process gateway token; read it like a browser would.
+const html = await (await fetch(`${API}/`)).text();
+TOKEN = /name="nexus-token" content="([^"]+)"/.exec(html)?.[1] || '';
+if (!TOKEN || TOKEN === '__NEXUS_TOKEN__') {
+  console.error('FAIL 无法从页面读取网关 token');
+  process.exit(1);
+}
 
 /* ---------------- mock SNMP agent on 1161 ---------------- */
 const snmp = dgram.createSocket('udp4');
@@ -158,6 +169,20 @@ try {
 
   const bad = await post('/api/snmp', { host: 'no-such-host.local', community: 'public' });
   check('SNMP 错误回显', bad.ok === false && !!bad.error, bad.error);
+
+  // gateway hardening + static caching
+  const noAuth = await fetch(`${API}/api/netinfo`);
+  check('API 无 token 拒绝', noAuth.status === 401, String(noAuth.status));
+  const notifyBad = await post('/api/notify', { url: 'http://127.0.0.1:18080/hook', payload: {} });
+  check('Webhook 拒绝内网/HTTP', notifyBad.ok === false && /https|内网/.test(notifyBad.error || ''), notifyBad.error);
+
+  const asset = await fetch(`${API}/styles.css`);
+  const tag = asset.headers.get('etag');
+  const cached = await fetch(`${API}/styles.css`, { headers: { 'If-None-Match': tag } });
+  check('ETag / 304', !!tag && cached.status === 304, `${tag} → ${cached.status}`);
+
+  const gz = await fetch(`${API}/src/main.js`, { headers: { 'Accept-Encoding': 'gzip' } });
+  check('gzip 压缩', gz.headers.get('content-encoding') === 'gzip', gz.headers.get('content-encoding') || 'none');
 
   // LLDP parser
   const cdp = `Device ID: SW-A01-01\n  Port ID (outgoing port): GigabitEthernet1/0/1`;

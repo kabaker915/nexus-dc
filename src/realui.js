@@ -55,6 +55,8 @@ const TPL = `
             <option value="cisco">Cisco</option>
             <option value="linux">Linux</option>
           </select>
+          <input id="real-community" class="real-port" placeholder="community" value="public" hidden />
+          <input id="real-pass" class="real-port" type="password" placeholder="Redfish 密码" hidden />
           <input id="real-mport" class="real-port" placeholder="端口" value="22" />
           <button class="tb-btn tiny" id="real-add-confirm">添加并探测</button>
         </div>
@@ -88,6 +90,8 @@ export class RealUI {
       user: document.getElementById('real-user'),
       family: document.getElementById('real-family'),
       protocol: document.getElementById('real-protocol'),
+      community: document.getElementById('real-community'),
+      pass: document.getElementById('real-pass'),
       mport: document.getElementById('real-mport'),
       topo: document.getElementById('real-topo'),
       probeAll: document.getElementById('real-probe-all'),
@@ -187,7 +191,9 @@ export class RealUI {
     const fallback = this.el.manual.hidden ? this.el.port.value : this.el.mport?.value;
     const p = Number(port || fallback) || (protocol === 'redfish' ? 443 : protocol === 'snmp' ? 161 : 22);
     const dev = this.real.addManual(host, user, p, family, protocol);
-    if (!dev) this.app.toast(`${host} 已在列表中`, 'warn');
+    if (!dev) { this.app.toast(`${host} 已在列表中`, 'warn'); return null; }
+    if (protocol === 'snmp') dev.community = this.el.community?.value || 'public';
+    if (protocol === 'redfish') dev.password = this.el.pass?.value || '';
     return dev;
   }
 
@@ -264,6 +270,8 @@ export class RealUI {
       const p = this.el.protocol.value;
       if (this.el.mport) this.el.mport.value = p === 'redfish' ? '443' : p === 'snmp' ? '161' : '22';
       if (this.el.family) this.el.family.disabled = p !== 'ssh';
+      if (this.el.community) this.el.community.hidden = p !== 'snmp';
+      if (this.el.pass) this.el.pass.hidden = p !== 'redfish';
     });
 
     this.el.topo?.addEventListener('click', async () => {

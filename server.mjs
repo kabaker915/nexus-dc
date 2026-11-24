@@ -1,7 +1,10 @@
 import http from 'node:http';
 import https from 'node:https';
 import dgram from 'node:dgram';
-import { readFile } from 'node:fs/promises';
+import crypto from 'node:crypto';
+import zlib from 'node:zlib';
+import dns from 'node:dns/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import net from 'node:net';
@@ -11,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5199);
 const HOST = '127.0.0.1';
+const TOKEN = process.env.NEXUS_TOKEN || crypto.randomBytes(18).toString('hex');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -18,6 +22,8 @@ const TYPES = {
   '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
@@ -395,18 +401,29 @@ async function handleProbe(req, res) {
 
 async function handleNotify(req, res) {
   const body = await readBody(req);
-  const url = String(body.url || '');
-  if (!/^https?:\/\//i.test(url)) {
-    return json(res, 400, { ok: false, error: 'Webhook 地址必须是 http/https' });
+  const raw = String(body.url || '');
+  let target;
+  try {
+    target = new URL(raw);
+  } catch {
+    return json(res, 400, { ok: false, error: 'Webhook 地址不合法' });
+  }
+  const allowHttp = process.env.NEXUS_ALLOW_HTTP_WEBHOOK === '1';
+  if (target.protocol !== 'https:' && !(allowHttp && target.protocol === 'http:')) {
+    return json(res, 400, { ok: false, error: 'Webhook 只允许 https（内网 http 需设置 NEXUS_ALLOW_HTTP_WEBHOOK=1）' });
+  }
+  if (process.env.NEXUS_ALLOW_PRIVATE_WEBHOOK !== '1' && !(await isPublicHost(target.hostname))) {
+    return json(res, 400, { ok: false, error: 'Webhook 不能指向本机 / 内网地址（需内网回调请设置 NEXUS_ALLOW_PRIVATE_WEBHOOK=1）' });
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    const r = await fetch(url, {
+    const r = await fetch(target, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body.payload || {}),
       signal: ctrl.signal,
+      redirect: 'manual',
     });
     return json(res, 200, { ok: r.ok, status: r.status });
   } catch (err) {
@@ -648,16 +665,78 @@ async function handleRedfish(req, res) {
   });
 }
 
+/* ------------------------------------------------------------------ *
+ *  Local gateway hardening: Host / Origin / token checks
+ *  (blocks DNS-rebinding pages that resolve to 127.0.0.1)
+ * ------------------------------------------------------------------ */
 function localOnly(req) {
   const addr = req.socket.remoteAddress || '';
   return !addr || /^(127\.|::1|::ffff:127\.)/.test(addr);
+}
+
+function hostIsLocal(req) {
+  const h = String(req.headers.host || '').toLowerCase();
+  return h === `127.0.0.1:${PORT}` || h === `localhost:${PORT}` || h === `[::1]:${PORT}`;
+}
+
+function originIsLocal(req) {
+  const o = req.headers.origin;
+  if (!o) return true;
+  try {
+    const u = new URL(o);
+    const host = u.hostname.replace(/^\[|\]$/g, '');
+    return (host === '127.0.0.1' || host === 'localhost' || host === '::1')
+      && Number(u.port || 80) === PORT;
+  } catch {
+    return false;
+  }
+}
+
+function apiGuard(req, res) {
+  if (!localOnly(req)) { json(res, 403, { ok: false, error: 'local access only' }); return false; }
+  if (!hostIsLocal(req)) { json(res, 403, { ok: false, error: 'host not allowed' }); return false; }
+  if (!originIsLocal(req)) { json(res, 403, { ok: false, error: 'origin not allowed' }); return false; }
+  if (req.headers['x-nexus-token'] !== TOKEN) {
+    json(res, 401, { ok: false, error: 'missing or invalid x-nexus-token（请通过本地页面访问）' });
+    return false;
+  }
+  return true;
+}
+
+function isPublicIp(ip) {
+  if (net.isIPv4(ip)) {
+    const p = ip.split('.').map(Number);
+    if (p[0] === 0 || p[0] === 10 || p[0] === 127) return false;
+    if (p[0] === 169 && p[1] === 254) return false;
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return false;
+    if (p[0] === 192 && p[1] === 168) return false;
+    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return false;
+    return true;
+  }
+  const low = ip.toLowerCase();
+  if (low === '::1' || low === '::') return false;
+  if (low.startsWith('fc') || low.startsWith('fd') || low.startsWith('fe80')) return false;
+  if (low.startsWith('::ffff:')) return isPublicIp(low.slice(7));
+  return true;
+}
+
+async function isPublicHost(hostname) {
+  const h = hostname.replace(/^\[|\]$/g, '');
+  if (/^(localhost|.*\.local|.*\.internal|.*\.lan)$/i.test(h)) return false;
+  if (net.isIP(h)) return isPublicIp(h);
+  try {
+    const list = await dns.lookup(h, { all: true });
+    return list.length > 0 && list.every((a) => isPublicIp(a.address));
+  } catch {
+    return false;
+  }
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}`);
 
   if (url.pathname.startsWith('/api/')) {
-    if (!localOnly(req)) return json(res, 403, { ok: false, error: 'local access only' });
+    if (!apiGuard(req, res)) return;
     try {
       if (url.pathname === '/api/netinfo') {
         if (req.method !== 'GET') return json(res, 405, { ok: false, error: 'method not allowed' });
@@ -702,12 +781,41 @@ const server = http.createServer(async (req, res) => {
       res.end('forbidden');
       return;
     }
-    const data = await readFile(file);
-    res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-cache',
+    const info = await stat(file);
+    if (info.isDirectory()) throw new Error('directory');
+
+    const ext = path.extname(file).toLowerCase();
+    let data = await readFile(file);
+
+    // token injection: the browser client must present it on every /api call
+    if (rel === '/index.html') {
+      data = Buffer.from(data.toString('utf8').replaceAll('__NEXUS_TOKEN__', TOKEN));
+    }
+
+    const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}-${rel === '/index.html' ? TOKEN.slice(0, 8) : '0'}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { ETag: etag, 'Cache-Control': rel.startsWith('/vendor/') ? 'public, max-age=31536000, immutable' : 'no-cache' });
+      res.end();
+      return;
+    }
+
+    const compressible = /^(text\/|application\/(javascript|json)|image\/svg)/.test(TYPES[ext] || '');
+    const acceptsGzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+    let encoding = null;
+    if (compressible && acceptsGzip && data.length > 1024) {
+      data = zlib.gzipSync(data, { level: 6 });
+      encoding = 'gzip';
+    }
+
+    const headers = {
+      'Content-Type': TYPES[ext] || 'application/octet-stream',
+      'Cache-Control': rel.startsWith('/vendor/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+      ETag: etag,
+      Vary: 'Accept-Encoding',
       'Access-Control-Allow-Origin': '*',
-    });
+    };
+    if (encoding) headers['Content-Encoding'] = encoding;
+    res.writeHead(200, headers);
     res.end(data);
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

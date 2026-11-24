@@ -36,6 +36,22 @@ import { WorkOrders } from './workorders.js';
 import { Thermal } from './thermal.js';
 import { Playbook } from './playbook.js';
 
+/* Local gateway token: injected into index.html by server.mjs.
+ * Added to every same-origin /api request so a DNS-rebound page cannot use it. */
+const NEXUS_TOKEN = document.querySelector('meta[name="nexus-token"]')?.content || '';
+if (NEXUS_TOKEN && NEXUS_TOKEN !== '__NEXUS_TOKEN__') {
+  const baseFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.startsWith('/api/')) {
+      const headers = new Headers(init.headers || {});
+      headers.set('X-Nexus-Token', NEXUS_TOKEN);
+      init = { ...init, headers };
+    }
+    return baseFetch(input, init);
+  };
+}
+
 /* ==================================================================== *
  *  STATE
  * ==================================================================== */
@@ -49,6 +65,7 @@ const state = {
   perf: 'high',
   selection: null,
   selectionSet: [],
+  layoutVersion: 0,
   mode: 'inspect',
   pendingKind: null,
   pendingCable: null,
@@ -66,6 +83,9 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// Static scene: refresh the shadow map only when geometry changes.
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.info.autoReset = false;
@@ -108,6 +128,10 @@ const sim = new Simulation(state);
 /* ==================================================================== *
  *  SELECTION / GHOST HELPERS
  * ==================================================================== */
+function touchShadows() {
+  renderer.shadowMap.needsUpdate = true;
+}
+
 const selBoxes = new Map();
 
 function selectionBox(key) {
@@ -173,6 +197,7 @@ function makeRack(name, x, z, rotY = 0, id = uid('rack')) {
   createRackModel(rack);
   scene.add(rack.group);
   refreshBlankPanels(rack, []);
+  touchShadows();
   return rack;
 }
 
@@ -214,6 +239,7 @@ function addDevice(rack, kind, opts = {}) {
 
   refreshBlankPanels(rack, rackDeviceList(state, rack));
   portPool.scheduleRebuild();
+  touchShadows();
   return dev;
 }
 
@@ -230,6 +256,7 @@ function removeDevice(dev) {
   dev.group?.parent?.remove(dev.group);
   delete state.devices[dev.id];
   portPool.scheduleRebuild();
+  touchShadows();
   if (state.selection?.id === dev.id) select(null);
 }
 
@@ -331,6 +358,7 @@ function moveDeviceTo(dev, slot) {
   dev.group.position.set(0, 0.06 + (slot - 1) * U + (dev.u * U) / 2, FRONT_Z);
   refreshBlankPanels(rack, rackDeviceList(state, rack));
   portPool.scheduleRebuild();
+  touchShadows();
   sim.tick();
   saveLayout(true);
   ui.refresh();
@@ -583,6 +611,7 @@ function applyPerf(level) {
   renderer.setPixelRatio(dpr);
   composer.setPixelRatio(dpr);
   renderer.shadowMap.enabled = p.shadow;
+  renderer.shadowMap.needsUpdate = p.shadow;
   if (lights?.key) {
     lights.key.castShadow = p.shadow;
     if (lights.key.shadow.mapSize.x !== p.shadowSize) {
@@ -1058,6 +1087,7 @@ function clearLayout() {
   state.nextDev = 0;
   extUI?.close();
   select(null);
+  touchShadows();
 }
 
 function loadLayout(data) {
@@ -1093,6 +1123,7 @@ function loadLayout(data) {
 
 function saveLayout(quiet = false) {
   try {
+    state.layoutVersion = (state.layoutVersion || 0) + 1;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serialize()));
     if (!quiet) toast('机房布局已保存到本地', 'ok');
   } catch (err) {
@@ -1541,7 +1572,19 @@ let ledCursor = 0;
 let saveAcc = 0;
 let frames = 0;
 let fpsAt = performance.now();
+let nextRenderAt = 0;
+let activeUntil = performance.now() + 4000;
+let lastFlatAt = 0;
 const perfHud = document.getElementById('perf-hud');
+
+function markActive(ms = 1200) {
+  activeUntil = performance.now() + ms;
+}
+controls.addEventListener('start', () => markActive(4000));
+controls.addEventListener('change', () => markActive(1200));
+renderer.domElement.addEventListener('pointerdown', () => markActive(2500));
+renderer.domElement.addEventListener('pointermove', () => markActive(500));
+window.addEventListener('visibilitychange', () => { if (!document.hidden) markActive(1500); });
 
 function animate(now) {
   requestAnimationFrame(animate);
@@ -1549,7 +1592,10 @@ function animate(now) {
   last = now;
 
   if (app.view === '2d') {
-    flat.frame(now);
+    if (now - lastFlatAt > 50) {
+      flat.frame(now);
+      lastFlatAt = now;
+    }
     saveAcc += dt;
     if (saveAcc > 45) { saveAcc = 0; saveLayout(true); }
     return;
@@ -1564,12 +1610,15 @@ function animate(now) {
   }
 
   // doors
+  let doorsMoving = false;
   for (const r of state.racks) {
     if (Math.abs(r.doorOpen - r.doorTarget) > 0.001) {
       r.doorOpen += (r.doorTarget - r.doorOpen) * Math.min(1, dt * 7);
       r.door.rotation.y = r.doorOpen;
+      doorsMoving = true;
     }
   }
+  if (doorsMoving) renderer.shadowMap.needsUpdate = true;
 
   // LEDs
   ledAcc += dt;
@@ -1593,16 +1642,22 @@ function animate(now) {
   cableSys.tick(dt, sim.stats.throughput);
   world.overhead.visible = camera.position.y < 5.4;
   controls.update();
-  renderer.info.reset();
-  composer.render();
 
-  frames++;
-  if (now - fpsAt >= 500) {
-    const fps = Math.round((frames * 1000) / (now - fpsAt));
-    frames = 0;
-    fpsAt = now;
-    if (perfHud && !perfHud.hidden) {
-      perfHud.textContent = `${fps} FPS · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris · LED ${ledInterval}ms`;
+  // Render on demand: full rate while interacting, ~12 fps when idle.
+  const idle = now > activeUntil;
+  if (!document.hidden && now >= nextRenderAt) {
+    nextRenderAt = now + (idle ? 80 : 0);
+    renderer.info.reset();
+    composer.render();
+
+    frames++;
+    if (now - fpsAt >= 500) {
+      const fps = Math.round((frames * 1000) / (now - fpsAt));
+      frames = 0;
+      fpsAt = now;
+      if (perfHud && !perfHud.hidden) {
+        perfHud.textContent = `${fps} FPS · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tris · LED ${ledInterval}ms`;
+      }
     }
   }
 

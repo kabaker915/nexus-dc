@@ -164,7 +164,7 @@ export class RealNet {
     try {
       const data = this.devices.map((d) => ({
         id: d.id, host: d.host, port: d.port, user: d.user, family: d.family,
-        protocol: d.protocol || 'ssh',
+        protocol: d.protocol || 'ssh', community: d.community || 'public',
         vendor: d.vendor, model: d.model, note: d.note || '',
         boundDeviceId: d.boundDeviceId || null, extId: d.extId || null,
       }));
@@ -185,6 +185,7 @@ export class RealNet {
           user: d.user || 'netops',
           family: d.family || 'auto',
           protocol: d.protocol || 'ssh',
+          community: d.community || 'public',
           vendor: d.vendor || 'unknown',
           model: d.model || '',
           note: d.note || '',

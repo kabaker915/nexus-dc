@@ -22,6 +22,9 @@ export class UI {
     this.tab = 'dash';
     this.selection = null;
     this.lastPort = null;
+    this._lv = -1;
+    this._rackAt = 0;
+    this._insAt = 0;
     this.el = {
       tsDev: $('#ts-dev'), tsPort: $('#ts-port'), tsThr: $('#ts-thr'),
       tsAlarm: $('#ts-alarm'), tsTemp: $('#ts-temp'), tsAlarmBox: $('#ts-alarm-box'),
@@ -232,6 +235,7 @@ export class UI {
     this.el.tabBack.hidden = false;
     if (this.selectionSet.length > 1) this.renderBatchInspector(this.selectionSet);
     else this.renderInspector();
+    this._insAt = Date.now();
   }
 
   renderBatchInspector(set) {
@@ -325,6 +329,7 @@ export class UI {
     const devs = Object.values(this.state.devices);
     const ports = devs.reduce((n, d) => n + d.ports.length, 0);
     const up = devs.reduce((n, d) => n + d.ports.filter((p) => p.state === 'up').length, 0);
+    const now = Date.now();
 
     this.el.tsDev.textContent = `${devs.length}`;
     this.el.tsPort.textContent = `${up}/${ports}`;
@@ -332,10 +337,16 @@ export class UI {
     this.el.tsAlarm.textContent = `${st.alarms}`;
     this.el.tsAlarmBox.classList.toggle('hot', st.alarms > 0);
     this.el.tsTemp.textContent = fmt(st.avgTemp, 1);
-    this.el.badge.textContent = `${st.critical + st.major + st.minor}`;
+    this.el.badge.textContent = `${st.alarms}`;
 
-    this.el.rackCount.textContent = `${racks.length} 台`;
-    this.renderRackList();
+    // Full rebuild only when the layout changed (or every 5s for power/temp).
+    const lv = this.state.layoutVersion || 0;
+    if (lv !== this._lv || now - this._rackAt > 5000) {
+      this.el.rackCount.textContent = `${racks.length} 台`;
+      this.renderRackList();
+      this._lv = lv;
+      this._rackAt = now;
+    }
     this.renderSummary(racks, devs, up, ports);
     this.renderDashboard(st, racks, devs);
 
@@ -345,7 +356,10 @@ export class UI {
     if (this.el.orderBadge) this.el.orderBadge.textContent = `${this.app.workorders?.openCount || 0}`;
     this.renderCapacity();
     this.renderDayChart();
-    if (!this.el.viewIns.hidden && this.selection) this.renderInspector();
+    if (!this.el.viewIns.hidden && this.selection && now - this._insAt > 2000) {
+      this.renderInspector();
+      this._insAt = now;
+    }
   }
 
   renderOrders() {
