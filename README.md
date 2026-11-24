@@ -11,6 +11,8 @@
 > **在线演示** → <https://kabaker915.github.io/nexus-dc/>
 > 静态托管版本，3D 构建 / 2D 运维 / 模拟模式开箱可用；真实设备、SNMP/Redfish 采集与命令下发需要本地运行 `server.mjs`。
 
+> **第一次使用？** 请直接看 **[📖 完整使用说明书（MANUAL.md）](MANUAL.md)** —— 安装启动、每个按钮、真实设备接入、API、快捷键、排障与安全边界都在里面。
+
 > **English** — NEXUS DC is a browser-based digital twin for data centers. Build racks and devices in WebGL, wire ports at cable-level accuracy, then operate the same state from a Canvas 2D view: alarms, drills, CLI, config backup, audits, work orders, capacity forecast, and real-device telemetry over SSH / SNMP v2c / Redfish. It runs as native ES modules with **zero build step** and a local Node gateway.
 
 基于 **three.js** 的可交互三维数据中心 + **Canvas 2D** 运维视图，并融合了 [NetDevOps-Toolbox-V1](https://github.com/lovekeven/NetDevOps-Toolbox-V1) 的多厂商运维能力：从空的机房地面开始，自由放置机柜、上架交换机 / 路由器 / 服务器 / 存储 / 配线架 / PDU，按端口级精度布线，然后用同一套状态做监控、告警、故障演练、CLI 终端、配置备份、批量巡检与智能诊断。
@@ -81,6 +83,8 @@ node server.mjs            # 或: PORT=8080 node server.mjs
 ![系统设置](docs/settings.png)
 
 ![批量操作](docs/batch.png)
+
+**运行时优化（v1.2）**：静态阴影只在地形/设备变化时重绘；空闲渲染降到 12 fps（交互 60 fps，标签页隐藏暂停）；UI 机柜列表按布局版本增量刷新、检查器 2 s 节流；静态资源 gzip + ETag/304，vendor 长缓存；网关增加 token + Host/Origin 校验，Webhook 默认仅 https/公网。
 
 ---
 
@@ -322,6 +326,14 @@ node tools/cdp.mjs http://127.0.0.1:5199/ tools/p2.png 5000 @p2-scenario.js
 node tools/service-test.mjs       # SNMP / Redfish 网关 + LLDP 解析（含本地 mock 设备）
 node tools/parse-test.mjs        # 真实设备回显解析（H3C / 华为 / Cisco / Linux）
 ```
+
+> **CI**：工作流模板在 [`docs/ci-workflow.yml`](docs/ci-workflow.yml)，包含语法检查、解析测试、网关/安全/缓存测试。启用方式（推送 workflow 需要 `workflow` scope）：
+>
+> ```bash
+> gh auth refresh -s workflow
+> mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/test.yml
+> git add .github/workflows/test.yml && git commit -m "ci: enable tests" && git push
+> ```
 
 端到端脚本会模拟真实点击，验证「放机柜 → 上架 → 布线 → 断电告警 → 修复 → 存盘」、2D 的「平面图选机柜 → 拓扑图选节点 → 注入故障 → 处置 → 回到 3D」、工具箱的「CLI 命令 → 配置生成 → 快照 → 巡检 → 模板执行 → 诊断」、外接设备的「选中节点 → 改配置 → 模拟下发 → 真实网关失败回显 → 新增节点 + 上联 → 持久化」、真实模式的「切到真实 → 扫描环回 → 接入 → 识别失败回显 → 绑定孪生 → 切回模拟清理」，以及 P0/P1 的「撤销重做 → 多选批量 → 正面编辑上架 → 模板保存应用 → 布线助手连接 → 画质档位 → 告警持久化」。
 

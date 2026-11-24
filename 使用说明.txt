@@ -64,3 +64,7 @@
 · 热力：按 H 或设置里勾选「机柜热力」；「顶部体积光」同样在设置里。
 · SNMP / Redfish：NetDevOps → 真实模式 → 手动添加，协议选 SNMP v2c 或 Redfish（Redfish 默认 443/https）。
 · 拓扑发现：真实模式「拓扑发现」会用 LLDP/CDP 邻居自动连上联。
+
+【完整使用说明书】见仓库根目录 MANUAL.md（GitHub 直接渲染，含安装、每个按钮、真实设备接入、API、排障）。
+【安全】/api/* 需要页面注入的 X-Nexus-Token，并校验 Host/Origin；Webhook 默认只允许 https 公网地址。
+【性能】空闲渲染自动降到 12fps；设置里可切「流畅/均衡/画质」。

@@ -48,6 +48,8 @@ const TPL = `
           <button class="tb-btn tiny ghost" id="set-report">导出 PDF 报告</button>
           <button class="tb-btn tiny ghost" id="set-clear-alarms">清空告警与事件</button>
           <button class="tb-btn tiny ghost" id="set-clear-all">清空全部本地数据</button>
+          <a class="tb-btn tiny ghost" href="https://github.com/kabaker915/nexus-dc/blob/main/MANUAL.md"
+             target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">使用说明书</a>
           <span class="set-hint" id="set-storage"></span>
         </div>
       </section>
