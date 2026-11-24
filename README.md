@@ -7,6 +7,7 @@
 [![No build step](https://img.shields.io/badge/build-none-8b7bff.svg)](#快速开始)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-5fa04e.svg)](https://nodejs.org/)
 [![Live Demo](https://img.shields.io/badge/live-demo-ff6b6b.svg)](https://kabaker915.github.io/nexus-dc/)
+[![tests](https://github.com/kabaker915/nexus-dc/actions/workflows/test.yml/badge.svg)](https://github.com/kabaker915/nexus-dc/actions/workflows/test.yml)
 
 > **在线演示** → <https://kabaker915.github.io/nexus-dc/>
 > 静态托管版本，3D 构建 / 2D 运维 / 模拟模式开箱可用；真实设备、SNMP/Redfish 采集与命令下发需要本地运行 `server.mjs`。
@@ -327,13 +328,7 @@ node tools/service-test.mjs       # SNMP / Redfish 网关 + LLDP 解析（含本
 node tools/parse-test.mjs        # 真实设备回显解析（H3C / 华为 / Cisco / Linux）
 ```
 
-> **CI**：工作流模板在 [`docs/ci-workflow.yml`](docs/ci-workflow.yml)，包含语法检查、解析测试、网关/安全/缓存测试。启用方式（推送 workflow 需要 `workflow` scope）：
->
-> ```bash
-> gh auth refresh -s workflow
-> mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/test.yml
-> git add .github/workflows/test.yml && git commit -m "ci: enable tests" && git push
-> ```
+> **CI**：`.github/workflows/test.yml` 已启用（`tests`），每次 push 自动执行语法检查、厂商回显解析、SNMP/Redfish/LLDP 与网关安全/缓存测试；模板另存于 [`docs/ci-workflow.yml`](docs/ci-workflow.yml) 方便 fork 后复用。
 
 端到端脚本会模拟真实点击，验证「放机柜 → 上架 → 布线 → 断电告警 → 修复 → 存盘」、2D 的「平面图选机柜 → 拓扑图选节点 → 注入故障 → 处置 → 回到 3D」、工具箱的「CLI 命令 → 配置生成 → 快照 → 巡检 → 模板执行 → 诊断」、外接设备的「选中节点 → 改配置 → 模拟下发 → 真实网关失败回显 → 新增节点 + 上联 → 持久化」、真实模式的「切到真实 → 扫描环回 → 接入 → 识别失败回显 → 绑定孪生 → 切回模拟清理」，以及 P0/P1 的「撤销重做 → 多选批量 → 正面编辑上架 → 模板保存应用 → 布线助手连接 → 画质档位 → 告警持久化」。
 
