@@ -1252,6 +1252,9 @@ function boot() {
   ui.refresh();
   setViewMode('3d');
   setTimeout(() => document.getElementById('loading').classList.add('done'), 250);
+  if (location.hostname.endsWith('.github.io')) {
+    setTimeout(() => toast('在线演示：构建 / 2D / 模拟运维可用；真实设备、SNMP/Redfish 与命令下发需在本地运行 server.mjs', 'ok'), 1500);
+  }
 }
 
 /* ==================================================================== *
