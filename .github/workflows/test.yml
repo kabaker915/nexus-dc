@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      NEXUS_TOKEN: ci-test-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check
+        run: |
+          node --check server.mjs
+          for f in src/*.js src/netdevops/*.js; do node --check "$f"; done
+      - name: Parser tests
+        run: node tools/parse-test.mjs
+      - name: Gateway tests (SNMP / Redfish / LLDP / security / cache)
+        run: |
+          node server.mjs &
+          sleep 2
+          node tools/service-test.mjs
