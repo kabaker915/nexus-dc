@@ -6,6 +6,10 @@
 [![three.js](https://img.shields.io/badge/three.js-r187-35d6ff.svg)](https://threejs.org/)
 [![No build step](https://img.shields.io/badge/build-none-8b7bff.svg)](#快速开始)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-5fa04e.svg)](https://nodejs.org/)
+[![Live Demo](https://img.shields.io/badge/live-demo-ff6b6b.svg)](https://kabaker915.github.io/nexus-dc/)
+
+> **在线演示** → <https://kabaker915.github.io/nexus-dc/>
+> 静态托管版本，3D 构建 / 2D 运维 / 模拟模式开箱可用；真实设备、SNMP/Redfish 采集与命令下发需要本地运行 `server.mjs`。
 
 > **English** — NEXUS DC is a browser-based digital twin for data centers. Build racks and devices in WebGL, wire ports at cable-level accuracy, then operate the same state from a Canvas 2D view: alarms, drills, CLI, config backup, audits, work orders, capacity forecast, and real-device telemetry over SSH / SNMP v2c / Redfish. It runs as native ES modules with **zero build step** and a local Node gateway.
 
