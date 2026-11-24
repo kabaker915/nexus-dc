@@ -36,3 +36,9 @@ SOFTWARE.
 
 - 版本：r187（已本地化到 `vendor/three/`）
 - 许可证：MIT — <https://github.com/mrdoob/three.js>
+
+## DCIM 3D 建模包（项目所有者提供）
+
+- 来源：用户提供的 `datacenter-3d` 源码包（程序化建模，无外部模型/贴图素材）。
+- 使用部分：`src/paneltex.js` 中的设备面板贴图生成逻辑；第一人称巡检的交互形态参考。
+- 许可：该源包未附 LICENSE 文件，经项目所有者授权在本项目中融合使用。

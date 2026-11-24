@@ -58,7 +58,19 @@ node server.mjs            # 或: PORT=8080 node server.mjs
 | 机柜交互 | 开 / 关前门（带开门动画）、应急制冷、定位 |
 | 持久化 | 自动存档 + 手动保存、导出布局 JSON |
 
-**快捷键**：`1` 总览 `2` 冷通道 `3` 俯视 `4` 特写 · `V` 切换 3D/2D · `F` 正面编辑 · `H` 热力 · `T` NetDevOps 工具箱 · `Shift` 多选 · `Ctrl+Z / Ctrl+Y` 撤销重做 · `Ctrl+A` 全选 · `E` 布线 · `X` 删除 · `Esc` 取消 · `Del` 拆除选中。
+**快捷键**：`1` 总览 `2` 冷通道 `3` 俯视 `4` 特写 · `V` 切换 3D/2D · `P` 第一人称巡检 · `F` 正面编辑 · `H` 热力 · `T` NetDevOps 工具箱 · `Shift` 多选 · `Ctrl+Z / Ctrl+Y` 撤销重做 · `Ctrl+A` 全选 · `E` 布线 · `X` 删除 · `Esc` 取消 · `Del` 拆除选中。
+
+---
+
+## 第一人称巡检
+
+按 `P` 或底部工具栏「巡检」进入：`WASD` / 方向键移动，`Shift` 加速，拖拽环视，准星对准设备左键查看，`P` / `Esc` 退出。带机柜碰撞、视线高度 1.62 m、随身巡检头灯，退出后自动回到原机位。
+
+![第一人称巡检](docs/walk.png)
+
+设备面板贴图升级为程序化机架面板（硬盘托架、端口矩阵、品牌/型号、状态灯、螺钉与噪点），近景下的 1U/2U/4U 细节更接近真实设备：
+
+![设备面板](docs/panels.png)
 
 ---
 
@@ -288,6 +300,8 @@ nexus-dc/
 │   ├── workorders.js     # 工单流转
 │   ├── playbook.js       # 演练剧本
 │   ├── thermal.js        # 机柜热力与体积光
+│   ├── walk.js           # 第一人称巡检（机柜碰撞 / 头灯 / 准星拾取）
+│   ├── paneltex.js       # 程序化设备面板贴图库（融合自 DCIM 建模包）
 │   ├── types.d.ts        # 核心对象类型契约（jsconfig.json 提供编辑器检查）
 │   ├── toolbox.js        # NetDevOps 工具箱窗口（终端/配置/巡检/模板/诊断）
 │   ├── netdevops/
@@ -324,6 +338,7 @@ node tools/cdp.mjs http://127.0.0.1:5199/ tools/real.png 5000 @real-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/p0p1.png 5000 @p0p1-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/batch.png 5000 @batch-render-scenario.js
 node tools/cdp.mjs http://127.0.0.1:5199/ tools/p2.png 5000 @p2-scenario.js
+node tools/cdp.mjs http://127.0.0.1:5199/ tools/walk.png 5000 @walk-scenario.js
 node tools/service-test.mjs       # SNMP / Redfish 网关 + LLDP 解析（含本地 mock 设备）
 node tools/parse-test.mjs        # 真实设备回显解析（H3C / 华为 / Cisco / Linux）
 ```

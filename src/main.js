@@ -35,6 +35,7 @@ import { Analytics } from './analytics.js';
 import { WorkOrders } from './workorders.js';
 import { Thermal } from './thermal.js';
 import { Playbook } from './playbook.js';
+import { WalkMode } from './walk.js';
 
 /* Local gateway token: injected into index.html by server.mjs.
  * Added to every same-origin /api request so a DNS-rebound page cannot use it. */
@@ -792,10 +793,12 @@ function nearestPortAt(clientX, clientY, maxPx = 14) {
 }
 
 function onPointerDown(e) {
+  if (walk.active) { walk.onDown(e); return; }
   down = { x: e.clientX, y: e.clientY };
 }
 
 function onPointerUp(e) {
+  if (walk.active) { walk.onUp(e); return; }
   if (!down) return;
   const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
   down = null;
@@ -1011,6 +1014,7 @@ let lastHover = 0;
 let down = null;
 
 function onPointerMove(e) {
+  if (walk.active) { walk.onMove(e); return; }
   if (state.mode === 'place') {
     updateGhost(e);
   } else {
@@ -1452,6 +1456,7 @@ const playbook = new Playbook(app);
 const templates = new Templates(app);
 const frontEditor = new FrontEditor(app);
 const cabling = new Cabling(app);
+const walk = new WalkMode(app);
 app.history = history;
 app.settings = settings;
 app.analytics = analytics;
@@ -1461,6 +1466,9 @@ app.playbook = playbook;
 app.templates = templates;
 app.frontEditor = frontEditor;
 app.cabling = cabling;
+app.walk = walk;
+app.kick = markActive;
+app.pickAtCenter = () => pickAt({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
 if (settings.data.heat) thermal.setHeat(true);
 if (settings.data.shafts) thermal.setShafts(true);
 analytics.ready.then(() => ui.refresh());
@@ -1484,6 +1492,7 @@ window.addEventListener('resize', () => {
 
 /* view + 2D toolbar */
 document.getElementById('btn-toolbox').addEventListener('click', () => toolbox.toggle());
+document.getElementById('btn-walk').addEventListener('click', () => walk.toggle());
 document.getElementById('btn-settings').addEventListener('click', () => settings.open());
 document.getElementById('hist-undo').addEventListener('click', () => history.undo());
 document.getElementById('hist-redo').addEventListener('click', () => history.redo());
@@ -1517,6 +1526,11 @@ document.getElementById('flat-bar').addEventListener('click', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (walk.active) {
+    if (e.key === 'Escape' || e.code === 'KeyP') { walk.exit(); return; }
+    walk.keydown(e);
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     if (e.shiftKey) history.redo();
@@ -1550,6 +1564,8 @@ window.addEventListener('keydown', (e) => {
     app.openFront();
   } else if (e.key.toLowerCase() === 'h') {
     app.toggleHeat();
+  } else if (e.key.toLowerCase() === 'p') {
+    walk.toggle();
   } else if (e.key.toLowerCase() === 'v') {
     app.toggleView();
   } else if (e.key === '1' && app.view === '3d') cameraPreset('overview');
@@ -1562,6 +1578,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('beforeunload', () => saveLayout(true));
+window.addEventListener('keyup', (e) => walk.keyup(e));
 
 /* ==================================================================== *
  *  LOOP
@@ -1641,7 +1658,8 @@ function animate(now) {
 
   cableSys.tick(dt, sim.stats.throughput);
   world.overhead.visible = camera.position.y < 5.4;
-  controls.update();
+  if (walk.active) walk.update(dt);
+  else controls.update();
 
   // Render on demand: full rate while interacting, ~12 fps when idle.
   const idle = now > activeUntil;

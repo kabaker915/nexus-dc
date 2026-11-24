@@ -4,20 +4,54 @@ import {
 } from './util.js';
 import { CATALOG, portUpColor } from './catalog.js';
 import { MAT, UNIT_BOX, UNIT_PLANE } from './materials.js';
+import { deviceFaceTexture } from './paneltex.js';
 
 const tmpObj = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 const faceMats = new Map();
 
-function faceMaterial(kind) {
-  if (faceMats.has(kind)) return faceMats.get(kind);
-  const s = CATALOG[kind];
-  const tex = faceplateTex(kind, {
-    brand: s.brand, model: s.model, vent: s.vent, accent: s.accent,
-    tone: kind === 'storage4u' ? '#2a2119' : undefined,
-  });
-  const m = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.15, roughness: 0.72 });
-  faceMats.set(kind, m);
+// Our catalog → the richer procedural faceplates from the DCIM modeling pack.
+const FACE_KIND = {
+  server1u: 'srv1u',
+  server2u: 'srv2u',
+  storage4u: 'srv4u',
+  switch48: 'sw1u',
+  switch24: 'sw1u',
+  firewall: 'fw1u',
+  patch24: 'pp1u',
+  pdu1u: 'pdu1u',
+};
+
+function faceVariant(dev) {
+  let h = 0;
+  for (const ch of dev.name) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return Math.abs(h) % 5;
+}
+
+function faceMaterial(kind, variant = 0) {
+  const key = `${kind}:${variant}`;
+  if (faceMats.has(key)) return faceMats.get(key);
+  const mapped = FACE_KIND[kind];
+  let m;
+  if (mapped) {
+    const t = deviceFaceTexture(mapped, variant);
+    m = new THREE.MeshStandardMaterial({
+      map: t.map,
+      emissiveMap: t.emissiveMap,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.26,
+      metalness: 0.18,
+      roughness: 0.62,
+    });
+  } else {
+    const s = CATALOG[kind];
+    const tex = faceplateTex(kind, {
+      brand: s.brand, model: s.model, vent: s.vent, accent: s.accent,
+      tone: kind === 'storage4u' ? '#2a2119' : undefined,
+    });
+    m = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.15, roughness: 0.72 });
+  }
+  faceMats.set(key, m);
   return m;
 }
 
@@ -178,7 +212,7 @@ export function createDeviceModel(dev) {
   dev.bodyMesh = body;
 
   // faceplate
-  const fp = new THREE.Mesh(UNIT_PLANE, faceMaterial(dev.kind));
+  const fp = new THREE.Mesh(UNIT_PLANE, faceMaterial(dev.kind, faceVariant(dev)));
   fp.scale.set(DEV_W - 0.004, h - 0.003, 1);
   fp.position.set(0, 0, 0.0016);
   fp.userData.deviceId = dev.id;

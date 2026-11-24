@@ -203,6 +203,7 @@
       <button data-panel="front" title="机柜正面编辑 (F)">正面</button>
       <button data-panel="templates" title="机柜模板与复制">模板</button>
       <button data-panel="cabling" title="布线助手">助手</button>
+      <button id="btn-walk" title="第一人称巡检 (P)">巡检</button>
     </div>
     <span id="mode-hint">左键选择 · Shift 多选 · 拖动旋转 · 滚轮缩放 · E 进入布线</span>
   </div>
@@ -223,8 +224,13 @@
   <div id="help" class="glass">
     <b>快捷键</b>
     <span><kbd>1</kbd>总览 <kbd>2</kbd>冷通道 <kbd>3</kbd>俯视 <kbd>4</kbd>特写 <kbd>V</kbd>3D/2D <kbd>F</kbd>正面编辑</span>
-    <span><kbd>Shift</kbd>多选 <kbd>Ctrl+Z</kbd>撤销 <kbd>Ctrl+Y</kbd>重做 <kbd>Ctrl+A</kbd>全选</span>
+    <span><kbd>P</kbd>第一人称巡检 <kbd>H</kbd>热力 <kbd>Shift</kbd>多选 <kbd>Ctrl+Z</kbd>撤销</span>
     <span><kbd>E</kbd>布线 <kbd>X</kbd>删除 <kbd>Esc</kbd>取消 <kbd>Del</kbd>移除选中</span>
+  </div>
+
+  <div id="walk-hud">
+    <span class="walk-cross"></span>
+    <div class="walk-tip">WASD 移动 · Shift 加速 · 拖拽环视 · 左键查看设备 · P / Esc 退出</div>
   </div>
 
   <div id="perf-hud" hidden>--</div>

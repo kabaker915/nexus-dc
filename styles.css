@@ -855,3 +855,15 @@ body.real-mode .brand .logo{background:linear-gradient(140deg,#ffb020,#ff7a3d);b
 .pb-step i{font-style:normal;font-size:9px;color:var(--dim-2);text-align:right}
 .pb-step.done{color:#cfe3f2;background:rgba(61,220,151,.07)}
 .pb-step.done i{color:var(--green)}
+
+/* ================= first-person inspection ================= */
+#walk-hud{position:fixed;inset:0;z-index:32;pointer-events:none;opacity:0;transition:opacity .18s}
+#walk-hud.on{opacity:1}
+.walk-cross{position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);border:1px solid rgba(120,230,255,.85);border-radius:50%;box-shadow:0 0 10px rgba(80,220,255,.45)}
+.walk-cross::before,.walk-cross::after{content:'';position:absolute;background:rgba(200,245,255,.9)}
+.walk-cross::before{left:50%;top:-9px;width:1px;height:5px;transform:translateX(-50%)}
+.walk-cross::after{top:50%;left:-9px;height:1px;width:5px;transform:translateY(-50%)}
+.walk-tip{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);padding:8px 14px;border-radius:10px;
+  background:rgba(6,12,18,.74);border:1px solid rgba(53,214,255,.25);color:#bfe6f7;font-size:11px;white-space:nowrap;
+  backdrop-filter:blur(6px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#btn-walk.on{background:rgba(53,214,255,.18);border-color:rgba(53,214,255,.6);color:#e6faff}
