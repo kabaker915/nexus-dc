@@ -1,0 +1,29 @@
+{
+  "name": "nexus-dc",
+  "version": "1.1.0",
+  "private": false,
+  "type": "module",
+  "description": "NEXUS DC — interactive three.js 3D datacenter digital twin with a Canvas 2D operations cockpit, port-level cabling, NetDevOps toolbox and real-device telemetry (SSH / SNMP / Redfish).",
+  "keywords": [
+    "three.js",
+    "datacenter",
+    "digital-twin",
+    "netdevops",
+    "network-operations",
+    "webgl"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabaker915/nexus-dc.git"
+  },
+  "homepage": "https://github.com/kabaker915/nexus-dc#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test:services": "node tools/service-test.mjs",
+    "test:parse": "node tools/parse-test.mjs"
+  }
+}

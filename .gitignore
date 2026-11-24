@@ -1,0 +1,18 @@
+# dependencies (none needed to run)
+node_modules/
+package-lock.json
+
+# portable runtime is distributed separately (USB / release zip)
+runtime/
+
+# local browser profile used by the CDP screenshot harness
+tools/.edge-profile/
+tools/*.png
+tools/*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

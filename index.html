@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NEXUS DC · 3D 机房构建与智能运维</title>
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="stage"><canvas id="flat" hidden></canvas></div>
+
+  <!-- runtime error overlay (hidden unless the app fails to boot) -->
+  <div id="fatal" hidden>
+    <h3>运行时错误</h3>
+    <pre id="fatal-msg"></pre>
+    <p>请打开浏览器控制台查看完整堆栈。</p>
+  </div>
+
+  <!-- ================= TOP BAR ================= -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <div class="brand-t">
+        <b>NEXUS DC</b>
+        <small>3D 机房构建 · 智能运维平台</small>
+      </div>
+    </div>
+
+    <div class="top-stats">
+      <div class="tstat"><label>设备</label><b id="ts-dev">0</b></div>
+      <div class="tstat"><label>在线端口</label><b id="ts-port">0/0</b></div>
+      <div class="tstat"><label>吞吐</label><b id="ts-thr">0</b><i>Gbps</i></div>
+      <div class="tstat hot" id="ts-alarm-box"><label>告警</label><b id="ts-alarm">0</b></div>
+      <div class="tstat"><label>平均温度</label><b id="ts-temp">--</b><i>℃</i></div>
+    </div>
+
+    <div class="top-actions">
+      <div class="dmode" id="data-mode">
+        <button data-dmode="sim" class="on">模拟</button>
+        <button data-dmode="real">真实</button>
+      </div>
+      <div class="views" id="view-toggle">
+        <button data-view="3d" class="on">3D</button>
+        <button data-view="2d">2D</button>
+      </div>
+      <div class="cams" id="cams">
+        <button data-cam="overview" class="on">总览</button>
+        <button data-cam="aisle">冷通道</button>
+        <button data-cam="top">俯视</button>
+        <button data-cam="rack">机柜特写</button>
+      </div>
+      <button id="btn-toolbox" class="btn">NetDevOps</button>
+      <button id="btn-settings" class="btn ghost" title="系统设置">设置</button>
+      <button id="btn-save" class="btn">保存</button>
+      <button id="btn-export" class="btn ghost">导出</button>
+      <button id="btn-reset" class="btn ghost">重置</button>
+    </div>
+  </header>
+
+  <!-- ================= LEFT : BUILD ================= -->
+  <aside id="left" class="panel glass">
+    <section class="side-head">
+      <h3>构建资源库</h3>
+      <small>点击后进入放置模式</small>
+    </section>
+    <div id="catalog" class="catalog"></div>
+
+    <section class="side-head gap">
+      <h3>机柜</h3>
+      <small id="rack-count">0 台</small>
+    </section>
+    <div id="rack-list" class="rack-list"></div>
+
+    <div id="asset-summary" class="asset-summary"></div>
+  </aside>
+
+  <!-- ================= RIGHT : OPS ================= -->
+  <aside id="right" class="panel glass">
+    <div class="panel-tabs" id="panel-tabs">
+      <button data-tab="dash" class="on">监控</button>
+      <button data-tab="alarms">告警 <i id="alarm-badge">0</i></button>
+      <button data-tab="orders">工单 <i id="order-badge">0</i></button>
+      <button data-tab="events">事件</button>
+      <button id="tab-back" class="tab-back" hidden>← 返回仪表盘</button>
+    </div>
+
+    <div class="panel-body" id="panel-body">
+      <!-- ---------- DASHBOARD ---------- -->
+      <div id="view-dash">
+        <div class="kpi-grid">
+          <div class="kpi"><label>设备在线率</label><b id="k-online">--</b><span id="k-online-s">--</span></div>
+          <div class="kpi"><label>活跃告警</label><b id="k-alarm">--</b><span id="k-alarm-s">--</span></div>
+          <div class="kpi"><label>总功耗</label><b id="k-power">--</b><span>kW</span></div>
+          <div class="kpi"><label>进风温度</label><b id="k-temp">--</b><span>℃</span></div>
+          <div class="kpi"><label>端口利用率</label><b id="k-ports">--</b><span>%</span></div>
+          <div class="kpi"><label>健康评分</label><b id="k-health">--</b><span>/ 100</span></div>
+        </div>
+
+        <section class="card">
+          <header><h4>网络吞吐</h4><em id="c-thr">0.0 Gbps</em></header>
+          <canvas id="chart-thr"></canvas>
+        </section>
+
+        <section class="card">
+          <header><h4>机柜温度趋势</h4><em id="c-temp">-- ℃</em></header>
+          <canvas id="chart-temp"></canvas>
+        </section>
+
+        <section class="card">
+          <header><h4>机柜功率负载</h4><em id="c-power">0 / 0 kW</em></header>
+          <div id="rack-bars" class="rack-bars"></div>
+        </section>
+
+        <section class="card">
+          <header><h4>端口状态分布</h4><em id="c-ports">--</em></header>
+          <div id="port-legend" class="legend"></div>
+          <div class="port-bar"><i class="up" id="pb-up"></i><i class="err" id="pb-err"></i><i class="down" id="pb-down"></i></div>
+        </section>
+
+        <section class="card">
+          <header><h4>24 小时趋势</h4><em id="c-day">--</em></header>
+          <canvas id="chart-day"></canvas>
+        </section>
+
+        <section class="card">
+          <header><h4>容量预测</h4><em>按近 24h 增速</em></header>
+          <div id="capacity" class="cap-list"></div>
+        </section>
+
+        <section class="card">
+          <header><h4>演练 · 故障注入</h4><em>作用于选中设备</em></header>
+          <div class="drill" id="drill">
+            <button data-drill="power">断电</button>
+            <button data-drill="fan">风扇故障</button>
+            <button data-drill="overheat">温度飙升</button>
+            <button data-drill="loss">端口丢包</button>
+            <button data-drill="congestion">流量拥塞</button>
+            <button id="btn-playbook">剧本演练</button>
+          </div>
+          <label class="autoheal"><input type="checkbox" id="autoheal" /> 自动处置（告警持续 20s 后自动修复）</label>
+        </section>
+      </div>
+
+      <!-- ---------- ALARMS ---------- -->
+      <div id="view-alarms" hidden>
+        <div class="list-toolbar">
+          <span id="alarm-summary">暂无告警</span>
+          <button id="btn-ack-all" class="btn tiny ghost">全部确认</button>
+        </div>
+        <div id="alarm-list" class="alarm-list"></div>
+      </div>
+
+      <!-- ---------- EVENTS ---------- -->
+      <div id="view-events" hidden>
+        <div class="list-toolbar"><span>运维操作与系统事件流</span></div>
+        <div id="event-list" class="event-list"></div>
+      </div>
+
+      <!-- ---------- WORK ORDERS ---------- -->
+      <div id="view-orders" hidden>
+        <div class="list-toolbar">
+          <span id="order-sum">工单</span>
+          <button id="btn-order-new" class="btn tiny ghost">新建工单</button>
+        </div>
+        <div id="order-list" class="order-list"></div>
+      </div>
+
+      <!-- ---------- INSPECTOR ---------- -->
+      <div id="view-inspector" hidden>
+        <div class="ins-head">
+          <div>
+            <h3 id="ins-title">--</h3>
+            <div id="ins-sub" class="ins-sub">--</div>
+          </div>
+          <span id="ins-badge" class="pill ok">在线</span>
+        </div>
+        <div id="ins-actions" class="ins-actions"></div>
+        <div id="ins-body"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= TOOLBAR ================= -->
+  <div id="toolbar" class="glass">
+    <div class="modes">
+      <button data-mode="inspect" class="on">选择</button>
+      <button data-mode="cable">布线</button>
+      <button data-mode="delete">删除</button>
+    </div>
+    <div class="modes" id="edit-tools">
+      <button id="hist-undo" title="撤销 (Ctrl+Z)">撤销</button>
+      <button id="hist-redo" title="重做 (Ctrl+Y)">重做</button>
+      <button data-panel="front" title="机柜正面编辑 (F)">正面</button>
+      <button data-panel="templates" title="机柜模板与复制">模板</button>
+      <button data-panel="cabling" title="布线助手">助手</button>
+    </div>
+    <span id="mode-hint">左键选择 · Shift 多选 · 拖动旋转 · 滚轮缩放 · E 进入布线</span>
+  </div>
+
+  <div id="flat-bar" class="glass" hidden>
+    <div class="modes">
+      <button data-flat="plan" class="on">平面图</button>
+      <button data-flat="topo">拓扑图</button>
+    </div>
+    <button data-flat="fit" class="btn tiny ghost">适配视图</button>
+    <button data-flat="ext" class="btn tiny">＋ 外部设备</button>
+    <span id="flat-hint">拖动外部节点 · 点击配置/下发命令 · V 切回 3D</span>
+  </div>
+
+  <div id="crosshair-hint" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="tooltip" class="hidden"></div>
+  <div id="help" class="glass">
+    <b>快捷键</b>
+    <span><kbd>1</kbd>总览 <kbd>2</kbd>冷通道 <kbd>3</kbd>俯视 <kbd>4</kbd>特写 <kbd>V</kbd>3D/2D <kbd>F</kbd>正面编辑</span>
+    <span><kbd>Shift</kbd>多选 <kbd>Ctrl+Z</kbd>撤销 <kbd>Ctrl+Y</kbd>重做 <kbd>Ctrl+A</kbd>全选</span>
+    <span><kbd>E</kbd>布线 <kbd>X</kbd>删除 <kbd>Esc</kbd>取消 <kbd>Del</kbd>移除选中</span>
+  </div>
+
+  <div id="perf-hud" hidden>--</div>
+
+  <div id="loading">
+    <div class="spin"></div>
+    <div class="load-t">
+      <b>NEXUS DC</b>
+      <span>正在初始化三维机房…</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Surface boot errors instead of a silent black screen.
+(function () {
+  const show = (msg) => {
+    const box = document.getElementById('fatal');
+    const pre = document.getElementById('fatal-msg');
+    if (!box || !pre) return;
+    box.hidden = false;
+    pre.textContent = (pre.textContent ? pre.textContent + '\n\n' : '') + msg;
+    const load = document.getElementById('loading');
+    if (load) load.classList.add('done');
+  };
+  window.addEventListener('error', (e) => {
+    const err = e.error;
+    show(`${err && err.name ? err.name : 'Error'}: ${e.message}\n${err && err.stack ? err.stack : ''}`);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason;
+    show(`Unhandled rejection: ${r && r.message ? r.message : r}\n${r && r.stack ? r.stack : ''}`);
+  });
+})();
+</script>
+<script type="module" src="./src/main.js"></script>
+
+</body>
+</html>
